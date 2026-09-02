@@ -4,9 +4,19 @@ import { recordRequest, getMetrics } from "../lib/metrics";
 import { recordCronRun } from "../lib/health";
 
 jest.mock("../lib/stellar", () => ({
-  rpcPool: { getMetrics: jest.fn(() => ({ active: 0, idle: 1, total: 1, waitingQueue: 0 })), shutdown: jest.fn() },
-  rpcBreaker: { getMetrics: jest.fn(() => ({ state: "CLOSED", failures: 0, successes: 0 })), getState: jest.fn(() => "CLOSED") },
-  getRpcStatus: jest.fn(() => ({ consecutiveFailures: 0, outageDurationMs: 0, lastSuccessAgoMs: 50 })),
+  rpcPool: {
+    getMetrics: jest.fn(() => ({ active: 0, idle: 1, total: 1, waitingQueue: 0 })),
+    shutdown: jest.fn(),
+  },
+  rpcBreaker: {
+    getMetrics: jest.fn(() => ({ state: "CLOSED", failures: 0, successes: 0 })),
+    getState: jest.fn(() => "CLOSED"),
+  },
+  getRpcStatus: jest.fn(() => ({
+    consecutiveFailures: 0,
+    outageDurationMs: 0,
+    lastSuccessAgoMs: 50,
+  })),
 }));
 
 jest.mock("../lib/satellite-sources", () => ({
@@ -127,9 +137,9 @@ describe("metrics collection (#283)", () => {
 
   describe("cron job metrics via health (#283 cron_job_duration_seconds analogue)", () => {
     it("cron runs are recorded in the health report", async () => {
-      const { getHealth } = await import("../lib/health");
-      recordCronRun("score-update", "success");
-      const health = await getHealth();
+      const healthMod = await import("../lib/health");
+      healthMod.recordCronRun("score-update", "success");
+      const health = await healthMod.getHealth();
       expect(health.last_cron_run).toMatchObject({
         name: "score-update",
         status: "success",
@@ -138,9 +148,9 @@ describe("metrics collection (#283)", () => {
     });
 
     it("cron error status is captured", async () => {
-      const { getHealth } = await import("../lib/health");
-      recordCronRun("indexer", "error");
-      const health = await getHealth();
+      const healthMod = await import("../lib/health");
+      healthMod.recordCronRun("indexer", "error");
+      const health = await healthMod.getHealth();
       expect(health.last_cron_run).toMatchObject({ status: "error" });
     });
   });

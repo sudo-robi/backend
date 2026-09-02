@@ -55,6 +55,7 @@ jest.mock("../config", () => ({
     REQUEST_SIGNING_SECRET: "",
     APM_PROVIDER: "none",
     CORS_ORIGINS: "",
+    MAX_POWER_KW: 1000,
     SECRETS_PROVIDER: "env",
   },
 }));

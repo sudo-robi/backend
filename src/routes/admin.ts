@@ -94,10 +94,12 @@ function parseProjectIds(body: unknown): number[] | null {
     }
     projectIds.push(entry);
   }
-  if (!raw.every((n) => (n as number) <= MAX_PROJECT_ID)) {
-    throw badRequest(`project_ids must not exceed maximum project id ${MAX_PROJECT_ID}`);
+  for (const entry of projectIds) {
+    if (entry > MAX_PROJECT_ID) {
+      throw badRequest(`project_ids must not exceed maximum project id ${MAX_PROJECT_ID}`);
+    }
   }
-  return raw as number[];
+  return projectIds;
 }
 
 // POST /api/admin/update-scores

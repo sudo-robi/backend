@@ -70,7 +70,7 @@ describe("process exit codes", () => {
 });
 
 function spawnSyncWithEnv(env: Record<string, string>, args: string[]) {
-  return spawnSync(process.execPath, args, {
+  return spawnSync(process.execPath, ["-r", "ts-node/register", ...args], {
     cwd: repoRoot,
     env: { ...process.env, ...env },
     encoding: "utf8",

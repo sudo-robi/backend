@@ -5,12 +5,19 @@ import adminRouter from "../routes/admin";
 import { getHealth } from "../lib/health";
 import { errorHandler, notFoundHandler } from "../middleware/errors";
 import * as registry from "../lib/registry";
+import { resetIdempotencyState } from "../lib/scoreService";
 
 // Factory mock avoids loading the real registry module, which throws at import
 // time when PROJECT_REGISTRY_CONTRACT_ID is unset (e.g. in CI).
 jest.mock("../lib/registry", () => ({
   updateImpactScore: jest.fn(),
   getTotalProjects: jest.fn(),
+}));
+jest.mock("../config", () => ({
+  config: {
+    ADMIN_API_KEY: "test-key",
+    MAX_POWER_KW: 1000,
+  },
 }));
 
 const ADMIN_API_KEY = "test-key";
@@ -19,7 +26,7 @@ const authHeader = { Authorization: `Bearer ${ADMIN_API_KEY}` };
 function buildApp(): Express {
   const app = express();
   app.use(express.json());
-  app.get("/health", (_req, res) => res.json(getHealth()));
+  app.get("/health", async (_req, res) => res.json(await getHealth()));
   app.use("/api/iot", iotRouter);
   app.use("/api/admin", adminRouter);
   app.use(notFoundHandler);
@@ -33,6 +40,7 @@ describe("HTTP integration", () => {
   beforeEach(() => {
     app = buildApp();
     process.env.ADMIN_API_KEY = ADMIN_API_KEY;
+    resetIdempotencyState();
     jest.clearAllMocks();
     (registry.updateImpactScore as jest.Mock).mockResolvedValue("tx-hash");
     (registry.getTotalProjects as jest.Mock).mockResolvedValue(2);
@@ -101,9 +109,15 @@ describe("HTTP integration", () => {
     });
 
     it("returns 500 when ADMIN_API_KEY is not configured", async () => {
-      delete process.env.ADMIN_API_KEY;
-      const res = await request(app).post("/api/admin/update-scores").send({}).expect(500);
-      expect(res.body.error.code).toBe("server_misconfigured");
+      const { config: cfg } = jest.requireMock("../config") as { config: Record<string, unknown> };
+      const saved = cfg.ADMIN_API_KEY;
+      cfg.ADMIN_API_KEY = undefined;
+      try {
+        const res = await request(app).post("/api/admin/update-scores").send({}).expect(500);
+        expect(res.body.error.code).toBe("server_misconfigured");
+      } finally {
+        cfg.ADMIN_API_KEY = saved;
+      }
     });
   });
 });

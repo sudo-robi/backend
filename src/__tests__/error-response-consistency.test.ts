@@ -9,11 +9,11 @@ jest.mock("../lib/registry", () => ({
   updateImpactScore: jest.fn(),
   getTotalProjects: jest.fn(),
 }));
-jest.mock("../routes/iot");
 jest.mock("../lib/scoring");
 jest.mock("../config", () => ({
   config: {
     ADMIN_API_KEY: "test-key",
+    MAX_POWER_KW: 1000,
   },
 }));
 
